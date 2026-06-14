@@ -15,6 +15,7 @@ export default function OutputPanel({
 }) {
   const isDark = theme === "dark";
   const bg = isDark ? "bg-zinc-900" : "bg-zinc-50";
+  const text = isDark ? "text-zinc-100" : "text-zinc-800";
   const label = isDark ? "text-zinc-500" : "text-zinc-400";
   const muted = isDark ? "text-zinc-600" : "text-zinc-300";
   const clearBtn = isDark
@@ -40,7 +41,7 @@ export default function OutputPanel({
       </div>
 
       <div className="flex-1 overflow-auto p-4 font-mono text-sm whitespace-pre-wrap">
-        {output && <pre className="text-zinc-100 m-0">{output}</pre>}
+        {output && <pre className={`${text} m-0`}>{output}</pre>}
         {error && <pre className="text-red-400 m-0">{error}</pre>}
         {!output && !error && (
           <span className={muted}>run your code to see output here</span>
