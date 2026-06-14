@@ -3,3 +3,18 @@ goblox — browser-based Go IDE, zero server.
 built with next.js, monaco editor, and [yaegi](https://github.com/traefik/yaegi) (go interpreter compiled to wasm).
 
 everything runs client-side. no api calls, no serverless functions.
+
+### features
+
+- go code execution via yaegi wasm (interpreter, not transpiler)
+- monaco editor with go syntax highlighting and custom zinc themes
+- auto-completions for stdlib packages (fmt, strings, os, json, and more)
+- resizable editor / output split view
+- stdin input panel for fmt.Scan / bufio.Scanner
+- dark and light themes
+- wasm loading progress bar
+- run timer and clear output
+- ctrl+enter / cmd+enter to run
+- go syntax error markers in editor
+- /capabilities page showing what works and what doesn't
+- e2e tests with playwright (15/16 passing)
