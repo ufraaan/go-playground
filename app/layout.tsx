@@ -26,6 +26,7 @@ const unicaOne = Unica_One({
 export const metadata: Metadata = {
   title: "goblox",
   description: "In-browser Go IDE",
+  icons: { icon: "/favicon.webp" },
 };
 
 export default function RootLayout({
