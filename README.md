@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Go Playground
 
-## Getting Started
+A Go IDE that runs entirely in the browser — no server-side compilation needed.
 
-First, run the development server:
+Built with [Next.js](https://nextjs.org/), [Monaco Editor](https://microsoft.github.io/monaco-editor/), and [Yaegi](https://github.com/traefik/yaegi) (a Go interpreter compiled to WebAssembly).
+
+## How it works
+
+- **Monaco Editor** provides code editing with Go syntax highlighting
+- **Yaegi** runs as WebAssembly in the browser, interpreting Go code client-side
+- No API calls, no serverless functions — everything happens in your browser
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm i -g vercel
+vercel
+```
 
-## Learn More
+No special configuration needed — the WASM binary is served as a static asset.
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/              - Next.js App Router pages
+components/       - React components (GoPlayground)
+go-wasm/          - Go source for the WASM interpreter
+public/           - Static assets (WASM binary, wasm_exec.js)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Building the WASM binary (optional)
 
-## Deploy on Vercel
+Requires Go 1.21+:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd go-wasm
+GOOS=js GOARCH=wasm go build -o ../public/goyae.wasm .
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Limitations
+
+- Yaegi is a Go interpreter, not a full compiler. Most standard library packages work, but some features may differ from `go build`.
+- The WASM binary is ~38MB (8MB gzipped). It's cached by the browser after the first load.
