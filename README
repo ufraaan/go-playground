@@ -1,0 +1,5 @@
+go playground — runs in the browser, no server needed.
+
+monaco editor + yaegi (go interpreter compiled to wasm).
+
+npm run dev to start, vercel to deploy.
