@@ -4,3 +4,11 @@ body {
   margin: 0;
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+.nabla {
+  font-family: var(--font-nabla), system-ui;
+}
+
+.unica {
+  font-family: var(--font-unica), sans-serif;
+}

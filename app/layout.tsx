@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Nabla, Unica_One } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,9 +12,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const nabla = Nabla({
+  variable: "--font-nabla",
+  subsets: ["latin"],
+});
+
+const unicaOne = Unica_One({
+  variable: "--font-unica",
+  weight: "400",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Go Playground - In-Browser Go IDE",
-  description: "A Go IDE that runs entirely in the browser using Yaegi WASM",
+  title: "goblox",
+  description: "In-browser Go IDE",
 };
 
 export default function RootLayout({
@@ -23,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nabla.variable} ${unicaOne.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );
