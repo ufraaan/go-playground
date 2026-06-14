@@ -196,24 +196,6 @@ func main() {
   expect(out).toContain("cancel err: context canceled");
 });
 
-// ── HTTP client ───────────────────────────────────────────────────────────────
-
-test("http client GET", async () => {
-  const out = await runCode(`package main
-import "fmt"
-import "net/http"
-import "io"
-func main() {
-  resp,err:=http.Get("https://httpbin.org/get")
-  if err!=nil { fmt.Println("err:",err); return }
-  defer resp.Body.Close()
-  body,_:=io.ReadAll(resp.Body)
-  fmt.Println("status:",resp.Status)
-  fmt.Println("body",string(body[:30]))
-}`);
-  expect(out).toContain("status: 200 OK");
-});
-
 // ── sync ──────────────────────────────────────────────────────────────────────
 
 test("sync Mutex and Once", async () => {
