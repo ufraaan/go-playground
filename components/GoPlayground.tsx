@@ -1,180 +1,186 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Editor, { loader } from "@monaco-editor/react";
+import EditorPane from "./EditorPane";
+import OutputPanel from "./OutputPanel";
+import StdinPanel from "./StdinPanel";
+import ProgressBar from "./ProgressBar";
+import ThemeToggle from "./ThemeToggle";
+import { useResizable } from "@/hooks/useResizable";
+import { useWasmLoader } from "@/hooks/useWasmLoader";
 
-loader.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs" } });
-
-const DEFAULT_CODE = `package main
-
-import "fmt"
-
-func main() {
-	fmt.Println("Hello, Go playground!")
+function parseErrorLine(err: string): number | null {
+  const m1 = err.match(/(\d+):(\d+):/);
+  if (m1) return parseInt(m1[1]);
+  const m2 = err.match(/line (\d+):/i);
+  if (m2) return parseInt(m2[1]);
+  return null;
 }
-`;
 
 export default function GoPlayground() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
-  const [wasmReady, setWasmReady] = useState(false);
-  const [wasmLoading, setWasmLoading] = useState(true);
+  const [runTime, setRunTime] = useState<number | null>(null);
+  const [stdin, setStdin] = useState("");
+  const runCodeRef = useRef<() => void>(() => {});
+  const { leftPercent, onMouseDown } = useResizable(60, 30, 85);
+  const wasm = useWasmLoader();
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "/wasm_exec.js";
-    script.async = false;
-    document.head.appendChild(script);
-
-    let cancelled = false;
-
-    async function loadWasm() {
-      const pollGo = () =>
-        new Promise<void>((resolve) => {
-          const check = () => {
-            if ((window as any).Go) return resolve();
-            setTimeout(check, 10);
-          };
-          check();
-        });
-
-      await pollGo();
-      if (cancelled) return;
-
-      try {
-        const go = new (window as any).Go();
-        const resp = await fetch("/goyae.wasm");
-        const wasmBytes = await resp.arrayBuffer();
-        const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
-        go.run(result.instance);
-
-        await new Promise<void>((resolve) => {
-          const check = () => {
-            if (cancelled) return;
-            if ((window as any).goWasmReady) {
-              resolve();
-            } else {
-              setTimeout(check, 50);
-            }
-          };
-          check();
-        });
-
-        if (!cancelled) {
-          setWasmReady(true);
-          setWasmLoading(false);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(`Failed to load WASM: ${e}`);
-          setWasmLoading(false);
-        }
-      }
-    }
-
-    loadWasm();
-    return () => { cancelled = true; };
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
   }, []);
 
-  const handleEditorDidMount = useCallback((editor: any) => {
-    editorRef.current = editor;
-    editor.focus();
-  }, []);
+  const handleEditorMount = useCallback(
+    (editor: any, monaco?: any) => {
+      editorRef.current = editor;
+      if (monaco) monacoRef.current = monaco;
+      (window as any).__gobloxSetCode = (code: string) => {
+        editor.setValue(code);
+      };
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+        runCodeRef.current();
+      });
+      editor.focus();
+    },
+    []
+  );
 
   const runCode = useCallback(async () => {
-    if (!editorRef.current || !wasmReady) return;
+    if (!editorRef.current || !wasm.ready) return;
+
     setRunning(true);
     setOutput("");
     setError("");
+    setRunTime(null);
+    if (monacoRef.current && editorRef.current) {
+      monacoRef.current.editor.setModelMarkers(
+        editorRef.current.getModel(),
+        "goblox",
+        []
+      );
+    }
 
     const code = editorRef.current.getValue();
+    const start = performance.now();
 
     try {
-      const result = (window as any).runGoCode(code);
+      const result = wasm.runCode(code, stdin);
+      const elapsed = Math.round(performance.now() - start);
+      setRunTime(elapsed);
+
+      if (result.error) {
+        setError(result.error);
+        const line = parseErrorLine(result.error);
+        if (line && monacoRef.current && editorRef.current) {
+          const m = monacoRef.current.editor;
+          m.setModelMarkers(
+            editorRef.current.getModel(),
+            "goblox",
+            [{
+              severity: m.MarkerSeverity.Error,
+              message: result.error,
+              startLineNumber: line,
+              startColumn: 1,
+              endLineNumber: line,
+              endColumn: 100,
+            }]
+          );
+        }
+      }
       if (result.output) setOutput(result.output);
-      if (result.error) setError(result.error);
-    } catch (e) {
+    } catch (e: any) {
       setError(`Runtime error: ${e}`);
     } finally {
       setRunning(false);
     }
-  }, [wasmReady]);
+  }, [wasm, stdin]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    },
-    [runCode]
-  );
+  useEffect(() => {
+    runCodeRef.current = runCode;
+  }, [runCode]);
+
+  const clearOutput = useCallback(() => {
+    setOutput("");
+    setError("");
+    setRunTime(null);
+    if (monacoRef.current && editorRef.current) {
+      monacoRef.current.editor.setModelMarkers(
+        editorRef.current.getModel(),
+        "goblox",
+        []
+      );
+    }
+  }, []);
+
+  const isDark = theme === "dark";
+  const bg = isDark ? "bg-zinc-900" : "bg-zinc-50";
+  const headerBg = isDark ? "bg-zinc-800" : "bg-zinc-100";
+  const textColor = isDark ? "text-zinc-100" : "text-zinc-900";
+  const separator = isDark ? "bg-zinc-700" : "bg-zinc-300";
+  const btnBg = isDark
+    ? "bg-zinc-700 hover:bg-zinc-600"
+    : "bg-zinc-800 hover:bg-zinc-700";
 
   return (
     <div
-      className="h-dvh w-screen flex flex-col bg-[#1e1e1e] text-white overflow-hidden"
-      onKeyDown={handleKeyDown}
+      className={`h-dvh w-screen flex flex-col ${bg} ${textColor} overflow-hidden`}
     >
-      <header className="flex items-center justify-between px-4 h-11 bg-[#2d2d2d] border-b border-[#3c3c3c] shrink-0">
+      <header
+        className={`flex items-center justify-between px-5 h-12 ${headerBg} shrink-0 select-none`}
+      >
         <div className="flex items-center gap-3">
-          <span className="text-blue-400 font-bold text-base">Go</span>
-          <span className="text-gray-400 text-sm">Playground</span>
+          <Link
+            href="/"
+            className={`nabla text-lg leading-none px-2 py-1 rounded transition-colors ${isDark ? "" : "bg-zinc-900"}`}
+          >
+            goblox
+          </Link>
         </div>
         <div className="flex items-center gap-3">
-          {wasmLoading && (
-            <span className="text-yellow-400 text-xs flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-              Loading interpreter (~8 MB)...
-            </span>
+          {wasm.loading && <ProgressBar progress={wasm.progress} />}
+          {wasm.error && (
+            <span className="text-red-400 text-xs">{wasm.error}</span>
           )}
           <button
+            data-testid="run-button"
             onClick={runCode}
-            disabled={running || !wasmReady}
-            className="px-4 py-1 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:text-gray-400 rounded text-white font-medium transition-colors"
+            disabled={running || !wasm.ready}
+            className={`px-4 py-1.5 text-xs font-medium tracking-wider uppercase rounded transition-colors text-zinc-100 ${btnBg} disabled:opacity-30 disabled:pointer-events-none`}
           >
-            {running ? "Running..." : "Run"}
+            {running ? "running..." : "run"}
           </button>
-          <span className="text-gray-600 text-xs hidden sm:inline">
-            Ctrl+Enter
-          </span>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1">
-          <Editor
-            height="100%"
-            defaultLanguage="go"
-            defaultValue={DEFAULT_CODE}
-            theme="vs-dark"
-            onMount={handleEditorDidMount}
-            options={{
-              fontSize: 14,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              padding: { top: 12 },
-              fontFamily: "'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace",
-              automaticLayout: true,
-            }}
-          />
+        <div style={{ width: `${leftPercent}%` }} className="flex flex-col">
+          <div className="flex-1">
+            <EditorPane theme={theme} onMount={handleEditorMount} />
+          </div>
         </div>
 
-        <div className="w-96 shrink-0 bg-[#1e1e1e] border-l border-[#3c3c3c] flex flex-col">
-          <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wider bg-[#2d2d2d] border-b border-[#3c3c3c]">
-            Output
+        <div
+          className={`w-px shrink-0 cursor-col-resize hover:w-[2px] ${separator} transition-all`}
+          onMouseDown={onMouseDown}
+        />
+
+        <div style={{ width: `${100 - leftPercent}%` }} className="flex flex-col">
+          <div className="flex-1">
+            <OutputPanel
+              output={output}
+              error={error}
+              runTime={runTime}
+              onClear={clearOutput}
+              theme={theme}
+            />
           </div>
-          <div className="flex-1 overflow-auto p-4 font-mono text-sm whitespace-pre-wrap">
-            {output && <pre className="text-green-400 m-0">{output}</pre>}
-            {error && <pre className="text-red-400 m-0">{error}</pre>}
-            {!output && !error && wasmReady && (
-              <span className="text-gray-500">Run your Go code to see output here</span>
-            )}
-            {wasmLoading && (
-              <span className="text-gray-500">Loading Go interpreter...</span>
-            )}
-          </div>
+          <StdinPanel value={stdin} onChange={setStdin} theme={theme} />
         </div>
       </div>
     </div>

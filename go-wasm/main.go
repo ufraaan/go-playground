@@ -3,20 +3,28 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"runtime"
+	"strings"
 	"syscall/js"
 
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 )
 
-func runCode(code string) (string, string) {
+func runCode(code string, stdin string) (string, string) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+
+	var stdinReader io.Reader
+	if stdin != "" {
+		stdinReader = strings.NewReader(stdin)
+	}
 
 	i := interp.New(interp.Options{
 		Stdout: stdout,
 		Stderr: stderr,
+		Stdin:  stdinReader,
 	})
 	i.Use(stdlib.Symbols)
 
@@ -44,10 +52,14 @@ func main() {
 
 	js.Global().Set("runGoCode", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		code := ""
+		stdin := ""
 		if len(args) > 0 {
 			code = args[0].String()
 		}
-		out, err := runCode(code)
+		if len(args) > 1 {
+			stdin = args[1].String()
+		}
+		out, err := runCode(code, stdin)
 		if err != "" {
 			return map[string]interface{}{"error": err, "output": out}
 		}
