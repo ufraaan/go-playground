@@ -1,6 +1,6 @@
 go playground — browser-based Go IDE, zero server.
 
-built with [next.js](https://nextjs.org/), [monaco editor](https://microsoft.github.io/monaco-editor/), and [yaegi](https://github.com/traefik/yaegi) (go interpreter compiled to wasm).
+built with next.js, monaco editor, and [yaegi](https://github.com/traefik/yaegi) (go interpreter compiled to wasm).
 
 everything runs client-side. no api calls, no serverless functions.
 
