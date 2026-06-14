@@ -40,3 +40,4 @@ go-wasm/go.work
 .vscode/
 *.swp
 *.swo
+test-results/
