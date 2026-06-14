@@ -27,6 +27,11 @@ export const metadata: Metadata = {
   title: "goblox",
   description: "In-browser Go IDE",
   icons: { icon: "/favicon.webp" },
+  openGraph: {
+    title: "goblox",
+    description: "In-browser Go IDE",
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
+  },
 };
 
 export default function RootLayout({
