@@ -1,4 +1,4 @@
-go playground — browser-based Go IDE, zero server.
+goblox — browser-based Go IDE, zero server.
 
 built with next.js, monaco editor, and [yaegi](https://github.com/traefik/yaegi) (go interpreter compiled to wasm).
 
